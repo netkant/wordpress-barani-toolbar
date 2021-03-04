@@ -6,7 +6,7 @@
     margin-right: 0;
 }
 
-#wp-admin-bar-barani-toolbar.spinner>.ab-item:before {
+#wp-admin-bar-barani-toolbar.barani-spinner>.ab-item:before {
     content: "\f463";
     
     -webkit-animation-name: spin;

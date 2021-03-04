@@ -2,7 +2,7 @@
     // ...
     var toggleSpinner = function() {
         var menuItem = $("li#wp-admin-bar-barani-toolbar");
-        menuItem.hasClass("spinner") ? menuItem.removeClass("spinner") : menuItem.addClass("spinner") ;
+        menuItem.hasClass("barani-spinner") ? menuItem.removeClass("barani-spinner") : menuItem.addClass("barani-spinner") ;
     }
 
     // ...

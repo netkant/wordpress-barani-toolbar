@@ -3,7 +3,7 @@
  * Plugin Name: Barani - Toolbar
  * Plugin URI: https://barani.io
  * Description: This plugin will help you clear you website cache. Look out for more helpful features in the future.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Netkant
  * Author URI: https://netkant.com
  * License: GPLv2 or later
@@ -12,7 +12,7 @@
 
 class BaraniToolbar
 {
-    const VERSION = '1.0.0';
+    const VERSION = '1.0.1';
     
     /**
      * Undocumented function
