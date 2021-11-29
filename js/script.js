@@ -40,6 +40,12 @@
     });
 
     // ...
+    $(document).on("click", "li#wp-admin-bar-barani-clear-object-cache > a.ab-item", function(e) { 
+        e.preventDefault();
+        clearCache(this, "This could potentially slow down your website, until cache has been rebuild.\n\nAre you sure that you want to CLEAR OBJECT CACHE?", "barani_clear_object_cache");
+    });
+
+    // ...
     $(document).on("click", "li#wp-admin-bar-barani-clear-all-cache > a.ab-item", function(e) { 
         e.preventDefault();
         clearCache(this, "This could potentially slow down your website, until cache has been rebuild.\n\nAre you sure that you want to CLEAR ALL CACHE?", "barani_clear_all_cache");

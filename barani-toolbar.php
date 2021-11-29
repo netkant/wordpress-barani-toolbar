@@ -3,7 +3,7 @@
  * Plugin Name: Barani - Toolbar
  * Plugin URI: https://barani.io
  * Description: This plugin will help you clear you website cache. Look out for more helpful features in the future.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Author: Netkant
  * Author URI: https://netkant.com
  * License: GPLv2 or later
@@ -12,7 +12,7 @@
 
 class BaraniToolbar
 {
-    const VERSION = '1.0.1';
+    const VERSION = '1.1.0';
     
     /**
      * Undocumented function
@@ -33,6 +33,9 @@ class BaraniToolbar
         add_action('wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ]);
         add_action('admin_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ]);
         add_action('admin_bar_menu', [ __CLASS__, 'admin_bar_menu' ], 10);
+
+        // ...
+        add_action('wp_ajax_barani_clear_object_cache', [ __CLASS__, 'wp_ajax_barani_clear_object_cache' ], 10);
 
         // ...
         if (isset($_SERVER['BARANI_API_TOKEN'])) {
@@ -82,6 +85,13 @@ class BaraniToolbar
             ));
         }
 
+        $admin_bar->add_node(array(
+            'parent' => 'barani-toolbar',
+            'id'     => 'barani-clear-object-cache',
+            'title'  => 'Clear Object Cache',
+            'href'   => '#'
+        ));
+
         if (isset($_SERVER['BARANI_API_TOKEN'])) {
             $admin_bar->add_node(array(
                 'parent' => 'barani-toolbar',
@@ -106,8 +116,19 @@ class BaraniToolbar
      * Undocumented function
      * @return void
      */
+    public function wp_ajax_barani_clear_object_cache()
+    {
+        wp_cache_flush();
+        wp_send_json([], 200);
+    }
+
+    /**
+     * Undocumented function
+     * @return void
+     */
     public function wp_ajax_barani_clear_all_cache()
     {
+        wp_cache_flush();
         list($code, $data) = self::barani_clear_cache();
         wp_send_json($data, $code);
     }
