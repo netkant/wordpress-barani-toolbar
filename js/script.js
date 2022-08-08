@@ -21,7 +21,10 @@
         $.ajax({
             url: barani_toolbar.ajaxurl, 
             method: "POST",
-            data: { "action": action },
+            data: { 
+                "action": action, 
+                "post_id": barani_toolbar.post_id
+            },
         }).always(function(jqXHR) {
             toggleSpinner();
             $(btn).removeClass("disabled");
@@ -37,6 +40,18 @@
     $(document).on("click", "li#wp-admin-bar-barani-clear-page-cache > a.ab-item", function(e) { 
         e.preventDefault();
         clearCache(this, "This could potentially slow down your website, until cache has been rebuild.\n\nAre you sure that you want to CLEAR PAGE CACHE?", "barani_clear_page_cache");
+    });
+
+    // ...
+    $(document).on("click", "li#wp-admin-bar-barani-clear-style-cache > a.ab-item", function(e) { 
+        e.preventDefault();
+        clearCache(this, "This could potentially slow down your website, until cache has been rebuild.\n\nAre you sure that you want to CLEAR STYLE CACHE?", "barani_clear_style_cache");
+    });
+
+    // ...
+    $(document).on("click", "li#wp-admin-bar-barani-clear-script-cache > a.ab-item", function(e) { 
+        e.preventDefault();
+        clearCache(this, "This could potentially slow down your website, until cache has been rebuild.\n\nAre you sure that you want to CLEAR SCRIPT CACHE?", "barani_clear_script_cache");
     });
 
     // ...

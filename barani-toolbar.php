@@ -1,9 +1,10 @@
 <?php
+
 /**
  * Plugin Name: Barani - Toolbar
  * Plugin URI: https://barani.io
  * Description: This plugin will help you clear you website cache. Look out for more helpful features in the future.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Netkant
  * Author URI: https://netkant.com
  * License: GPLv2 or later
@@ -12,35 +13,39 @@
 
 class BaraniToolbar
 {
-    const VERSION = '1.1.0';
-    
+    const VERSION = '1.2.0';
+
     /**
      * Undocumented function
      * @return void
      */
-    public static function init()
+    public function __construct()
     {
         // ...
         if (!is_user_logged_in())
             return;
-        
+
         // ...
-        $user = wp_get_current_user();
-        if (!$user->has_cap('edit_posts') && !$user->has_cap('edit_pages'))
+        if (!current_user_can('edit_posts') && !current_user_can('edit_pages'))
             return;
 
         // ...
-        add_action('wp_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ]);
-        add_action('admin_enqueue_scripts', [ __CLASS__, 'enqueue_assets' ]);
-        add_action('admin_bar_menu', [ __CLASS__, 'admin_bar_menu' ], 10);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('admin_bar_menu', [$this, 'admin_bar_menu'], 10);
 
         // ...
-        add_action('wp_ajax_barani_clear_object_cache', [ __CLASS__, 'wp_ajax_barani_clear_object_cache' ], 10);
+        add_action('wp_print_styles', [$this, 'wp_print_styles']);
+
+        // ...
+        add_action('wp_ajax_barani_clear_object_cache', [$this, 'wp_ajax_barani_clear_object_cache'], 10);
 
         // ...
         if (isset($_SERVER['BARANI_API_TOKEN'])) {
-            add_action('wp_ajax_barani_clear_page_cache', [ __CLASS__, 'wp_ajax_barani_clear_page_cache' ], 10);
-            add_action('wp_ajax_barani_clear_all_cache', [ __CLASS__, 'wp_ajax_barani_clear_all_cache' ], 10);
+            add_action('wp_ajax_barani_clear_page_cache', [$this, 'wp_ajax_barani_clear_page_cache'], 10);
+            add_action('wp_ajax_barani_clear_style_cache', [$this, 'wp_ajax_barani_clear_style_cache'], 10);
+            add_action('wp_ajax_barani_clear_script_cache', [$this, 'wp_ajax_barani_clear_script_cache'], 10);
+            add_action('wp_ajax_barani_clear_all_cache', [$this, 'wp_ajax_barani_clear_all_cache'], 10);
         }
     }
 
@@ -51,24 +56,58 @@ class BaraniToolbar
     public function enqueue_assets()
     {
         // ...
-        wp_enqueue_style('barani-toolbar', plugin_dir_url( __FILE__ ) . 'css/styles.css', array(), self::VERSION);
+        wp_enqueue_style('barani-toolbar', plugin_dir_url(__FILE__) . 'css/styles.css', array(), $this::VERSION);
 
         // ...
-        wp_register_script('barani-toolbar', plugin_dir_url( __FILE__ ) . 'js/script.js');
+        wp_register_script('barani-toolbar', plugin_dir_url(__FILE__) . 'js/script.js');
         wp_localize_script('barani-toolbar', 'barani_toolbar', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
+            'post_id' => get_the_ID(),
         ));
 
         // ...
-        wp_enqueue_script('barani-toolbar', '', array('jquery'), self::VERSION, true);
+        wp_enqueue_script('barani-toolbar', '', array('jquery'), $this::VERSION, true);
     }
-     
+
+    public function wp_print_styles()
+    {
+        global $wp_styles;
+
+        // ...
+        $transient_name  = sprintf('_barani_toolbar_enqueued_styles_%s', get_the_ID());
+        $enqueued_styles = get_transient($transient_name);
+        if (!is_array($enqueued_styles))
+            $enqueued_styles = [];
+
+        // ...
+        foreach ($wp_styles->queue as $handle) {
+            $src = $wp_styles->registered[$handle]->src;
+            if (!is_string($src))
+                continue;
+
+            $url = '';
+            if (strpos($src, get_site_url()) === 0) {
+                $url = $src;
+            } elseif (strpos($src, '/') === 0) {
+                $url = get_site_url(null, $src);
+            }
+
+            if (!in_array($url, $enqueued_styles) && strpos($url, content_url()) === 0) {
+                $enqueued_styles[] = $url;
+            }
+        }
+
+        // ...
+        set_transient($transient_name, $enqueued_styles);
+    }
+
     /**
      * Undocumented function
      * @param [type] $admin_bar
      * @return void
      */
-    public function admin_bar_menu($admin_bar) {         
+    public function admin_bar_menu($admin_bar)
+    {
         $admin_bar->add_node(array(
             'parent' => 'top-secondary',
             'id'     => 'barani-toolbar',
@@ -108,8 +147,55 @@ class BaraniToolbar
      */
     public function wp_ajax_barani_clear_page_cache()
     {
-        list($code, $data) = self::barani_clear_cache(isset($_SERVER['HTTP_REFERER']) ? [ $_SERVER['HTTP_REFERER'] ] : []);
+        // ...
+        if (!isset($_POST['post_id']))
+            wp_send_json([], 412);
+
+        // ...
+        $post_id         = absint($_POST['post_id']);
+        $transient_name  = sprintf('_barani_toolbar_enqueued_styles_%s', $post_id);
+        $enqueued_styles = get_transient($transient_name);
+
+        // ...
+        $urls   = is_array($enqueued_styles) ? $enqueued_styles : [];
+        $urls[] = get_permalink($post_id);
+
+        // ...
+        list($code, $data) = $this->barani_clear_cache($urls);
         wp_send_json($data, $code);
+    }
+
+    /**
+     * Undocumented function
+     * @return void
+     */
+    public function wp_ajax_barani_clear_style_cache()
+    {
+        global $wp_styles;
+
+        $urls = [];
+        foreach ($wp_styles->registered as $style) {
+
+            $src = $style->src;
+            if (!is_string($src))
+                continue;
+
+            $url = '';
+            if (strpos($src, get_site_url()) === 0) {
+                $url = $src;
+            } elseif (strpos($src, '/') === 0) {
+                $url = get_site_url(null, $src);
+            }
+
+            if (strpos($url, content_url()) === 0) {
+                $urls[] = $url;
+            }
+        }
+
+        wp_send_json($urls, 200);
+
+        #list($code, $data) = $this->barani_clear_cache($urls);
+        #wp_send_json($data, $code);
     }
 
     /**
@@ -129,7 +215,7 @@ class BaraniToolbar
     public function wp_ajax_barani_clear_all_cache()
     {
         wp_cache_flush();
-        list($code, $data) = self::barani_clear_cache();
+        list($code, $data) = $this->barani_clear_cache();
         wp_send_json($data, $code);
     }
 
@@ -138,11 +224,11 @@ class BaraniToolbar
      * @param array $urls
      * @return void
      */
-    public static function barani_clear_cache($urls = [])
+    public function barani_clear_cache($urls = [])
     {
         // ...
         if (!isset($_SERVER['BARANI_API_TOKEN'])) {
-            return [ 500, 'API token is missing' ];
+            return [500, 'API token is missing'];
         }
 
         //setup the request, you can also use CURLOPT_URL
@@ -150,7 +236,7 @@ class BaraniToolbar
 
         // ...
         if (!empty($urls)) {
-            $json = json_encode(array('urls' => $urls ));
+            $json = json_encode(array('urls' => $urls));
             curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Length: ' . strlen($json)));
             curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         }
@@ -159,7 +245,7 @@ class BaraniToolbar
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, array(
             'Content-Type: application/json',
-            'Authorization: Bearer '. $_SERVER['BARANI_API_TOKEN']
+            'Authorization: Bearer ' . $_SERVER['BARANI_API_TOKEN']
         ));
 
         // get stringified data/output. See CURLOPT_RETURNTRANSFER
@@ -169,9 +255,11 @@ class BaraniToolbar
         // close curl resource (to free up system resources)
         curl_close($ch);
 
-        return [ $code, json_decode($data) ];
+        return [$code, json_decode($data)];
     }
 }
 
 // ...
-add_action('init', [ 'BaraniToolbar', 'init' ]);
+add_action('init', function () {
+    new BaraniToolbar;
+});
